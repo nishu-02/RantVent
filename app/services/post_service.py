@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 from uuid import UUID
 
@@ -17,7 +17,7 @@ class PostService:
         self,
         user: User,
         audio_path: str,
-        audio_duration_sec" Optional[int] = None,
+        audio_duration_sec: Optional[int] = None,
     ) -> Post:
 
         now = datetime.utcnow()
@@ -36,19 +36,19 @@ class PostService:
         return post
 
     async def get_post(self, post_id: UUID) -> Post | None:
-        stmt = select(Post).where(Post.id== post.id)
+        stmt = select(Post).where(Post.id == post_id)
         result = await self.db.execute(stmt)
 
-        return results.scalars().first()
+        return result.scalars().first()
 
-    async def list_post(self, limit: int = 20, offset: int = 0) -> List[Post]:
+    async def list_posts(self, limit: int = 20, offset: int = 0) -> List[Post]:
         stmt = (
             select(Post)
             .order_by(Post.created_at.desc())
             .limit(limit)
             .offset(offset)
         )
-        resutl = await self.db.execute(stmt)
+        result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
     async def update_transcription(
@@ -64,7 +64,7 @@ class PostService:
         post.summary = summary
         post.tldr = tldr
         post.language = language
-        post.status = PostStatus.COMPLETED
+        post.status = PostStatus.READY
 
         await self.db.commit()
         await self.db.refresh(post)

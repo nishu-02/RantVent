@@ -1,11 +1,17 @@
 import asyncio
 import os
 from logging.config import fileConfig
+from pathlib import Path
+from dotenv import load_dotenv
 
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import pool
 
 from alembic import context
+
+# Load .env file
+env_file = Path(__file__).parent.parent / ".env"
+load_dotenv(env_file)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -18,9 +24,10 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = None
+from app.core.database import Base
+from app.models.user import User
+from app.models.post import Post
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -59,12 +66,10 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    # Get database URL from environment or alembic.ini
-    database_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
-    
-    # Ensure it's using asyncpg driver for PostgreSQL
-    if not database_url.startswith("postgresql+asyncpg://"):
-        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://")
+    # Get database URL from environment (loaded from .env)
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        database_url = config.get_main_option("sqlalchemy.url")
     
     connectable = create_async_engine(
         database_url,

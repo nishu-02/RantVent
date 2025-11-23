@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jwt import decode_token
 from app.dependencies.redis import token_in_blacklist
-from app.core.db import get_session
+from app.core.database import get_session
 from app.services.user_service import UserService
 from app.models.user import User
 

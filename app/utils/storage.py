@@ -1,7 +1,7 @@
 import os
 import uuid
-from pathlib import pathlib
 
+from pathlib import Path
 from fastapi import UploadFile
 
 from app.core.config import settings
@@ -12,12 +12,13 @@ async def save_upload_to_disk(file: UploadFile) -> str:
     Returns absolute path as string.
     """
     media_root = Path(settings.MEDIA_ROOT) / settings.AUDIO_SUBDIR
-    media_root.mkdir(parents=True, exists_ok=True)
+    media_root.mkdir(parents=True, exist_ok=True)
 
-    exit = os.path.splittext(file.filename or "")[1] or ".ogg"
-    fname - f"{uuid.uuid4().hex}{ext}"
+    ext = os.path.splitext(file.filename or "")[1] or ".wav"
+    fname = f"{uuid.uuid4().hex}{ext}"
+
     path = media_root / fname
-    
+
     contents = await file.read()
     with path.open("wb") as f:
         f.write(contents)
