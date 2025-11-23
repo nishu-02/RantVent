@@ -24,25 +24,12 @@ async def create_comment(
     comment_data: CommentCreate,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_session),
-    # current_user: User = Depends(get_current_user),  # TODO: Uncomment when auth is ready
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new comment on a post"""
     
     # Save uploaded audio file
     original_audio_path = await save_upload_to_disk(file)
-    
-    # Create a temporary User object for testing (without auth)
-    from sqlalchemy import select
-    from app.models.user import User
-    stmt = select(User).limit(1)
-    result = await db.execute(stmt)
-    current_user = result.scalars().first()
-    
-    if not current_user:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, 
-            "No users available. Please create a user first."
-        )
     
     # Create comment service and create comment
     service = CommentService(db)
@@ -51,7 +38,6 @@ async def create_comment(
         comment = await service.create_comment(
             user=current_user,
             post_id=comment_data.post_id,
-            original_audio_path=original_audio_path,
         )
         
         # Start background processing

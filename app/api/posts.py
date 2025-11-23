@@ -23,23 +23,14 @@ async def create_post(
     anonymize_mode: int,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_session),
-    # current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     if not (0 <= anonymize_mode <= 6):
         raise HTTPException(400, "Invalid anonymize mode")
 
     raw_path = await save_upload_to_disk(file)
 
-    # Create a temporary User object for testing (without auth)
-    from sqlalchemy import select
     service = PostService(db)
-    stmt = select(User).limit(1)
-    result = await db.execute(stmt)
-    current_user = result.scalars().first()
-    
-    if not current_user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "No users available. Please create a user first.")
-    
     post = await service.create_post(
         user=current_user,
         audio_path=raw_path,

@@ -110,7 +110,6 @@ class CommentService:
         self,
         user: User,
         post_id: UUID,
-        original_audio_path: str,
     ) -> Comment:
         """
         Create a new comment on a post
