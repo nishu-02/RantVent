@@ -21,12 +21,16 @@ router = APIRouter(prefix="/comments", tags=["comments"])
 
 @router.post("", response_model=CommentOut, status_code=status.HTTP_201_CREATED)
 async def create_comment(
-    comment_data: CommentCreate,
+    post_id: UUID = Query(..., description="ID of the post to comment on"),
+    anonymize_mode: int = Query(1, ge=0, le=6, description="Anonymization preset (0-6)"),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
     """Create a new comment on a post"""
+    
+    if not (0 <= anonymize_mode <= 6):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid anonymize mode")
     
     # Save uploaded audio file
     original_audio_path = await save_upload_to_disk(file)
@@ -37,12 +41,12 @@ async def create_comment(
     try:
         comment = await service.create_comment(
             user=current_user,
-            post_id=comment_data.post_id,
+            post_id=post_id,
         )
         
         # Start background processing
         asyncio.create_task(
-            process_comment_audio(comment.id, original_audio_path)
+            process_comment_audio(comment.id, original_audio_path, anonymize_mode)
         )
         
         # Convert to response format

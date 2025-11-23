@@ -144,6 +144,7 @@ class CommentService:
         self,
         comment: Comment,
         original_audio_path: str,
+        anonymize_mode: int = 1,
     ) -> Comment:
         """
         Process comment audio:
@@ -169,10 +170,10 @@ class CommentService:
                 post.summary
             )
             
-            # Anonymize the audio (using preset 1 as default, can be made configurable)
+            # Anonymize the audio with user-specified preset
             anonymized_path = voice_anonymizer.anonymize(
                 original_audio_path, 
-                preset_index=1  # You can make this configurable
+                preset_index=anonymize_mode
             )
             
             # Update comment with results

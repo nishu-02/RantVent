@@ -76,7 +76,7 @@ async def process_post_audio(post_id: UUID, anonymize_mode: int) -> None:
             # TODO: proper logging
 
 
-async def process_comment_audio(comment_id: UUID, original_audio_path: str) -> None:
+async def process_comment_audio(comment_id: UUID, original_audio_path: str, anonymize_mode: int = 1) -> None:
     """
     Async background processor for comments:
     - Load comment
@@ -97,7 +97,7 @@ async def process_comment_audio(comment_id: UUID, original_audio_path: str) -> N
             print(f"[Comment] Starting processing for comment {comment_id}")
             
             # Process the comment audio (sentiment analysis + anonymization)
-            await service.process_comment_audio(comment, original_audio_path)
+            await service.process_comment_audio(comment, original_audio_path, anonymize_mode)
             
             print(f"[Comment] Successfully processed comment {comment_id}")
             
