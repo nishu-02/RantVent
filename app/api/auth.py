@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.user import UserCreate, UserLogin, UserOut
 from app.models.user import UserRole
 from app.services.user_service import UserService
-from app.core.jwt import create_access_token, create_refresh_token, verify_password
+from app.core.token import create_access_token, create_refresh_token, verify_password
 from app.core.database import get_session
 from app.dependencies.auth import (
     AccessTokenBearer,

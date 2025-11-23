@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_serializer
+from uuid import UUID
 
 
 class UserCreate(BaseModel):
@@ -14,7 +15,7 @@ class UserLogin(BaseModel):
 
 
 class UserOut(BaseModel):
-    id: str
+    id: str | UUID
     email: EmailStr
     username: str
     about: str | None
@@ -22,3 +23,8 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True  # enables ORM → schema conversion
+
+    @field_serializer('id')
+    def serialize_id(self, value: UUID | str) -> str:
+        """Convert UUID to string for JSON response"""
+        return str(value) if isinstance(value, UUID) else value

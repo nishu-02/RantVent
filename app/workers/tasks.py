@@ -6,7 +6,9 @@ from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
 from app.models.post import Post
+from app.models.comment import Comment
 from app.services.post_service import PostService
+from app.services.comment_service import CommentService
 from app.services.voice_anonymizer import voice_anonymizer
 from app.services.gemini_service import gemini_service
 
@@ -71,4 +73,37 @@ async def process_post_audio(post_id: UUID, anonymize_mode: int) -> None:
             print(f"Error processing post {post_id}: {str(e)}")
             traceback.print_exc()
             await service.mark_failed(post)
+            # TODO: proper logging
+
+
+async def process_comment_audio(comment_id: UUID, original_audio_path: str) -> None:
+    """
+    Async background processor for comments:
+    - Load comment
+    - Analyze sentiment using Gemini
+    - Anonymize audio 
+    - Update comment with results
+    - Delete original audio
+    """
+    async with AsyncSessionLocal() as db:
+        service = CommentService(db)
+        
+        comment = await service.get_comment(comment_id)
+        if not comment:
+            print(f"Comment {comment_id} not found")
+            return
+        
+        try:
+            print(f"[Comment] Starting processing for comment {comment_id}")
+            
+            # Process the comment audio (sentiment analysis + anonymization)
+            await service.process_comment_audio(comment, original_audio_path)
+            
+            print(f"[Comment] Successfully processed comment {comment_id}")
+            
+        except Exception as e:
+            import traceback
+            print(f"Error processing comment {comment_id}: {str(e)}")
+            traceback.print_exc()
+            await service.mark_comment_failed(comment)
             # TODO: proper logging

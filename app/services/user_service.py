@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User, UserRole
 from app.schemas.user import UserCreate
-from app.core.jwt import hash_password
+from app.core.token import hash_password
 
 
 class UserService:

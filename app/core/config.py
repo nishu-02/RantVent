@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # Voice anonymizer presets (semi-colon separated tuples of pitch,frequency_shift,time_factor)
     VOICE_PRESETS: str
 
+    # JWT settings
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
     # CORS origins: comma-separated string (e.g., "http://localhost:3000,http://example.com" or "*")
     CORS_ORIGINS: str = "*"
     DEBUG: bool = True
