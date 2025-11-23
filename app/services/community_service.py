@@ -28,6 +28,7 @@ class CommunityService:
             display_name=data.display_name,
             description=data.description,
             type=CommunityType.PUBLIC.value,
+            owner_id=creator.id,
             member_count=1,
         )
 
@@ -37,11 +38,11 @@ class CommunityService:
             await self.db.commit()
             await self.db.refresh(community)
 
-            # Add create as member
+            # Add creator as owner
             membership = CommunityMembership(
                 user_id=str(creator.id),
                 community_id=str(community.id),
-                role=MembershipRole.ADMIN.value,
+                role=MembershipRole.OWNER.value,
             )
             self.db.add(membership)
             await self.db.commit()

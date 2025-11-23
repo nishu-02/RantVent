@@ -11,6 +11,7 @@ class MembershipRole(PyEnum):
     MEMBER = "member"
     MODERATOR = "moderator"
     ADMIN = "admin"
+    OWNER = "owner"
 
 
 class CommunityMembership(Base):

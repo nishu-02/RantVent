@@ -26,6 +26,7 @@ class CommunityCreate(BaseModel):
 class CommunityUpdate(BaseModel):
     display_name: Optional[str] = Field(None, min_length=3, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
+    rules: Optional[str] = Field(None, max_length=2000)
 
 
 class CommunityOut(BaseModel):
@@ -33,12 +34,14 @@ class CommunityOut(BaseModel):
     name: str
     display_name: str
     description: Optional[str]
+    rules: Optional[str]
     type: str
     is_active: bool
-    memeber_count: int
+    member_count: int  # Fixed typo
     post_count: int
     created_at: datetime
     is_member: bool = False # Indicates if the requesting user is a member (done by the service layer)
+    user_role: Optional[str] = None  # User's role in community
 
     class Config:
         from_attributes = True

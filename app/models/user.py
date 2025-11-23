@@ -65,3 +65,8 @@ class User(Base):
     community_memberships: Mapped[List["CommunityMembership"]] = relationship(
         back_populates="user",
     )
+    
+    owned_communities: Mapped[List["Community"]] = relationship(
+        foreign_keys="Community.owner_id",
+        back_populates="owner"
+    )

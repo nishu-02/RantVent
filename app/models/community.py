@@ -1,8 +1,10 @@
-from sqlalchemy import Column, String, Text, Boolean, DateTime, Integer, Enum
+from sqlalchemy import Column, String, Text, Boolean, DateTime, Integer, Enum, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 from enum import Enum as PyEnum
 from typing import List, Optional
+from uuid import UUID
 
 from app.core.database import Base
 
@@ -26,6 +28,18 @@ class Community(Base):
     )
 
     description: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    
+    owner_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    
+    rules: Mapped[Optional[str]] = mapped_column(
         Text,
         nullable=True,
     )
@@ -55,6 +69,11 @@ class Community(Base):
     )
     
     # Relationships
+    owner: Mapped["User"] = relationship(
+        foreign_keys=[owner_id],
+        back_populates="owned_communities"
+    )
+    
     posts: Mapped[List["Post"]] = relationship(
         back_populates="community"
     )

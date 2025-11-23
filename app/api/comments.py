@@ -1,4 +1,3 @@
-# app/api/comments.py
 import asyncio
 from uuid import UUID
 from typing import List, Optional
