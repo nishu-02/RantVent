@@ -18,11 +18,13 @@ class PostService:
         user: User,
         audio_path: str,
         audio_duration_sec: Optional[int] = None,
+        community_id: Optional[UUID] = None,
     ) -> Post:
 
         now = datetime.utcnow()
         post = Post(
             user_id=user.id,
+            community_id=community_id,
             audio_path=audio_path,
             audio_duration_sec=audio_duration_sec,
             status=PostStatus.PROCESSING,
@@ -41,9 +43,40 @@ class PostService:
 
         return result.scalars().first()
 
-    async def list_posts(self, limit: int = 20, offset: int = 0) -> List[Post]:
+    async def list_posts(self, limit: int = 20, offset: int = 0, community_id: Optional[UUID] = None) -> List[Post]:
+        stmt = select(Post)
+        
+        if community_id:
+            stmt = stmt.where(Post.community_id == community_id)
+        
+        stmt = (
+            stmt.order_by(Post.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+    
+    async def list_posts_by_communities(self, community_ids: List[UUID], limit: int = 20, offset: int = 0) -> List[Post]:
+        """Get posts from multiple communities (for user feed)"""
+        if not community_ids:
+            return []
+            
         stmt = (
             select(Post)
+            .where(Post.community_id.in_(community_ids))
+            .order_by(Post.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+    
+    async def get_general_posts(self, limit: int = 20, offset: int = 0) -> List[Post]:
+        """Get posts not assigned to any community (general posts)"""
+        stmt = (
+            select(Post)
+            .where(Post.community_id.is_(None))
             .order_by(Post.created_at.desc())
             .limit(limit)
             .offset(offset)
@@ -74,3 +107,19 @@ class PostService:
     async def mark_failed(self, post: Post) -> Post:
         post.status = PostStatus.FAILED
         await self.db.commit()
+        return post
+        
+    async def update_community_post_count(self, community_id: UUID, increment: bool = True) -> None:
+        """Update post count for a community"""
+        from app.models.community import Community
+        
+        stmt = select(Community).where(Community.id == community_id)
+        result = await self.db.execute(stmt)
+        community = result.scalars().first()
+        
+        if community:
+            if increment:
+                community.post_count += 1
+            else:
+                community.post_count = max(0, community.post_count - 1)
+            await self.db.commit()

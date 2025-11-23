@@ -1,10 +1,10 @@
-from sqlalchemy import Column, String, Text, Boolean, DateTime, Integer
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, Text, Boolean, DateTime, Integer, Enum
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 from enum import Enum as PyEnum
+from typing import List, Optional
 
 from app.core.database import Base
-from app.models.mixins import UUIDMixin, TimestampMixin
 
 class CommunityType(PyEnum):
     PUBLIC = "public"
@@ -15,6 +15,7 @@ class Community(Base):
 
     name: Mapped[str] = mapped_column(
         String(100),
+        unique=True,
         nullable=False,
         index=True,
     )
@@ -24,38 +25,43 @@ class Community(Base):
         nullable=False,
     )
 
-    description: Mapped[str] = mapped_column(
+    description: Mapped[Optional[str]] = mapped_column(
         Text,
-        nullable=False,
+        nullable=True,
     )
-
+    
     type: Mapped[CommunityType] = mapped_column(
         Enum(CommunityType, name="community_type"),
-        nullable=False,
         default=CommunityType.PUBLIC,
+        nullable=False,
     )
-
+    
     is_active: Mapped[bool] = mapped_column(
         Boolean,
-        nullable=False,
         default=True,
+        nullable=False,
     )
-
-    members_count: Mapped[int] = mapped_column(
+    
+    member_count: Mapped[int] = mapped_column(
         Integer,
         default=0,
         nullable=False,
     )
-
+    
     post_count: Mapped[int] = mapped_column(
         Integer,
         default=0,
         nullable=False,
     )
-
-    # relationships
-    posts = relationship("Post", back_populates="community")
-    memberships = relationship("CommunityMembership", back_populates="community")
+    
+    # Relationships
+    posts: Mapped[List["Post"]] = relationship(
+        back_populates="community"
+    )
+    
+    memberships: Mapped[List["CommunityMembership"]] = relationship(
+        back_populates="community"
+    )
 
     def __repr__(self):
-        return f"<Community(id={self.id}, name={self.name}, display_name={self.display_name})>"
+        return f"<Community {self.name}>"

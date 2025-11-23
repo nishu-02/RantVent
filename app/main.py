@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.database import create_tables
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
+from app.api.communities import router as communities_router
 from app.api.posts import router as posts_router
 from app.api.comments import router as comments_router
 
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
     # -------------------------------------
     app.include_router(auth_router)
     app.include_router(users_router)
+    app.include_router(communities_router)
     app.include_router(posts_router)
     app.include_router(comments_router)
 

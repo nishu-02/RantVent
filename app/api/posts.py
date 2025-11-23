@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
 from fastapi.responses import FileResponse
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
+from uuid import UUID
 
 from app.core.database import get_session
 from app.dependencies.auth import get_current_user
@@ -20,7 +22,8 @@ router = APIRouter(prefix="/posts", tags=["posts"])
 
 @router.post("", response_model=PostOut, status_code=status.HTTP_201_CREATED)
 async def create_post(
-    anonymize_mode: int,
+    anonymize_mode: int = Query(..., ge=0, le=6, description="Anonymization preset (0-6)"),
+    community_id: Optional[UUID] = Query(None, description="Community to post in (optional)"),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -28,18 +31,36 @@ async def create_post(
     if not (0 <= anonymize_mode <= 6):
         raise HTTPException(400, "Invalid anonymize mode")
 
+    # If community_id is provided, verify it exists and user is a member
+    if community_id:
+        from app.services.community_service import CommunityService
+        community_service = CommunityService(db)
+        
+        community = await community_service.get_by_id(str(community_id))
+        if not community:
+            raise HTTPException(404, "Community not found")
+        
+        is_member = await community_service.is_member(str(community_id), str(current_user.id))
+        if not is_member:
+            raise HTTPException(403, "Must be a member of the community to post")
+
     raw_path = await save_upload_to_disk(file)
 
     service = PostService(db)
     post = await service.create_post(
         user=current_user,
         audio_path=raw_path,
+        community_id=community_id,
     )
 
     import asyncio
     asyncio.create_task(
         process_post_audio(post.id, anonymize_mode)
     )
+    
+    # Update community post count if post is in a community
+    if community_id:
+        await service.update_community_post_count(community_id, increment=True)
 
     return PostOut(
         id=post.id,
@@ -78,14 +99,35 @@ async def get_post(
     )
 
 
-@router.get("", response_model=list[PostFeedItem])
+@router.get("", response_model=List[PostFeedItem])
 async def list_posts(
-    limit: int = 20,
-    offset: int = 0,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    community_id: Optional[UUID] = Query(None, description="Filter by community"),
+    feed_type: str = Query("general", description="Feed type: general, communities, or all"),
     db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
     service = PostService(db)
-    posts = await service.list_posts(limit=limit, offset=offset)
+    
+    if community_id:
+        # Get posts from specific community
+        posts = await service.list_posts(limit, offset, community_id)
+    elif feed_type == "communities":
+        # Get posts from user's joined communities
+        from app.services.community_service import CommunityService
+        community_service = CommunityService(db)
+        
+        memberships = await community_service.get_user_communities(str(current_user.id))
+        community_ids = [UUID(m.community_id) for m in memberships]
+        
+        posts = await service.list_posts_by_communities(community_ids, limit, offset)
+    elif feed_type == "general":
+        # Get posts not in any community (general feed)
+        posts = await service.get_general_posts(limit, offset)
+    else:
+        # Get all posts (mixed feed)
+        posts = await service.list_posts(limit, offset)
 
     return [
         PostFeedItem(

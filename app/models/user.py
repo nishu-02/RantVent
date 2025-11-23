@@ -61,3 +61,7 @@ class User(Base):
     comments: Mapped[List["Comment"]] = relationship(
         back_populates="user",
     )
+    
+    community_memberships: Mapped[List["CommunityMembership"]] = relationship(
+        back_populates="user",
+    )

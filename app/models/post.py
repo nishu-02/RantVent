@@ -31,6 +31,12 @@ class Post(Base):
         index=True,
     )
 
+    community_id: Mapped[Optional[UUID]] = mapped_column(
+        ForeignKey("communities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     audio_path: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -73,7 +79,14 @@ class Post(Base):
     )
 
     # relationships
-    user: Mapped["User"] = relationship(back_populates="posts")
+    user: Mapped["User"] = relationship(
+        back_populates="posts"
+    )
+
+    community: Mapped[Optional["Community"]] = relationship(
+        back_populates="posts"
+    )
+    
     comments: Mapped[List["Comment"]] = relationship(
         "Comment",
         back_populates="post",
