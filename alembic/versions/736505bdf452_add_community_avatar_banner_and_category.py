@@ -1,7 +1,7 @@
 """add_community_avatar_banner_and_category
 
 Revision ID: 736505bdf452
-Revises: c7d8e9f0a1b2
+Revises: a1b2c3d4e5f6
 Create Date: 2025-11-24 11:05:35.728384
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '736505bdf452'
-down_revision: Union[str, Sequence[str], None] = 'c7d8e9f0a1b2'
+down_revision: Union[str, Sequence[str], None] = 'a1b2c3d4e5f6'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -26,7 +26,6 @@ def upgrade() -> None:
     op.add_column('communities', sa.Column('banner_url', sa.String(length=500), nullable=True))
     op.create_index(op.f('ix_communities_category_id'), 'communities', ['category_id'], unique=False)
     op.create_foreign_key(None, 'communities', 'community_categories', ['category_id'], ['id'], ondelete='SET NULL')
-    op.drop_column('community_categories', 'color')
     # Add is_pinned as nullable first with default value
     op.add_column('posts', sa.Column('is_pinned', sa.Boolean(), nullable=True, server_default='false'))
     # Make it not null after data is populated
@@ -42,7 +41,6 @@ def downgrade() -> None:
     op.drop_column('posts', 'pinned_at')
     op.drop_column('posts', 'pinned_by')
     op.drop_column('posts', 'is_pinned')
-    op.add_column('community_categories', sa.Column('color', sa.VARCHAR(length=7), autoincrement=False, nullable=True))
     op.drop_constraint(None, 'communities', type_='foreignkey')
     op.drop_index(op.f('ix_communities_category_id'), table_name='communities')
     op.drop_column('communities', 'banner_url')

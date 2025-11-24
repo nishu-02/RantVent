@@ -28,7 +28,7 @@ from app.core.database import Base
 from app.models.user import User
 from app.models.post import Post
 from app.models.comment import Comment
-from app.models.community import Community
+from app.models.community import Community, CommunityCategory, CommunityPin
 from app.models.community_membership import CommunityMembership
 target_metadata = Base.metadata
 
