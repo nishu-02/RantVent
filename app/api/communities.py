@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from uuid import UUID
+import asyncio
 
 from app.schemas.community import (
     CommunityCreate, CommunityUpdate, CommunityOut, 
@@ -15,6 +16,7 @@ from app.core.database import get_session
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.models.community_membership import MembershipRole
+from app.core.logger import logger
 
 router = APIRouter(prefix="/communities", tags=["communities"])
 
@@ -62,6 +64,7 @@ async def create_community(
     
     try:
         community = await service.create_community(data, current_user)
+        logger.info("community_created_via_api", community_id=str(community.id), name=community.name, creator_id=str(current_user.id))
         
         # Create response with proper field conversion
         return CommunityOut(
@@ -171,6 +174,7 @@ async def join_community(
     # Check if community exists
     community = await service.get_by_id(str(community_id))
     if not community:
+        logger.warning("join_community_failed_not_found", community_id=str(community_id), user_id=str(current_user.id))
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             "Community not found"
@@ -178,8 +182,10 @@ async def join_community(
     
     try:
         await service.join_community(str(community_id), current_user)
+        logger.info("user_joined_community_via_api", community_id=str(community_id), user_id=str(current_user.id), community_name=community.display_name)
         return {"message": f"Successfully joined {community.display_name}"}
     except ValueError as e:
+        logger.warning("join_community_failed", community_id=str(community_id), user_id=str(current_user.id), error=str(e))
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
 
 
@@ -195,6 +201,7 @@ async def leave_community(
     # Check if community exists
     community = await service.get_by_id(str(community_id))
     if not community:
+        logger.warning("leave_community_failed_not_found", community_id=str(community_id), user_id=str(current_user.id))
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             "Community not found"
@@ -202,8 +209,10 @@ async def leave_community(
     
     try:
         await service.leave_community(str(community_id), current_user)
+        logger.info("user_left_community_via_api", community_id=str(community_id), user_id=str(current_user.id), community_name=community.display_name)
         return {"message": f"Successfully left {community.display_name}"}
     except ValueError as e:
+        logger.warning("leave_community_failed", community_id=str(community_id), user_id=str(current_user.id), error=str(e))
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
 
 

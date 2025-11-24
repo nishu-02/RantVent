@@ -12,6 +12,7 @@ from app.dependencies.auth import (
 )
 from app.dependencies.redis import add_jti_to_blacklist
 from app.models.user import User, UserRole
+from app.core.logger import logger
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -26,11 +27,13 @@ async def signup(
 
     try:
         new_user = await service.create_user(data)
+        logger.info("user_signup_successful", user_id=str(new_user.id), email=new_user.email)
         return {
             "message": "User created successfully", 
             "user_id": str(new_user.id)
         }
     except ValueError as e:
+        logger.warning("user_signup_failed", email=data.email, error=str(e))
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
 
 
@@ -45,6 +48,7 @@ async def login(
     user = await service.get_user_by_email(data.email)
 
     if not user or not verify_password(data.password, user.password_hash):
+        logger.warning("login_failed_invalid_credentials", email=data.email)
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, 
             "Invalid credentials"
@@ -60,6 +64,7 @@ async def login(
         user_id=str(user.id),
     )
 
+    logger.info("user_login_successful", user_id=str(user.id), email=user.email)
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,

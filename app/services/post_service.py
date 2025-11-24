@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.post import Post, PostStatus
 from app.models.user import User
+from app.core.logger import logger
 
 class PostService:
     def __init__(self, db: AsyncSession):
@@ -34,6 +35,7 @@ class PostService:
         self.db.add(post)
         await self.db.commit()
         await self.db.refresh(post)
+        logger.info("post_created", post_id=str(post.id), user_id=str(user.id), community_id=str(community_id) if community_id else None, duration_sec=audio_duration_sec)
         
         return post
 
@@ -101,12 +103,14 @@ class PostService:
 
         await self.db.commit()
         await self.db.refresh(post)
+        logger.info("post_transcription_updated", post_id=str(post.id), language=language, status="READY")
 
         return post
     
     async def mark_failed(self, post: Post) -> Post:
         post.status = PostStatus.FAILED
         await self.db.commit()
+        logger.error("post_marked_failed", post_id=str(post.id), status="FAILED")
         return post
         
     async def update_community_post_count(self, community_id: UUID, increment: bool = True) -> None:

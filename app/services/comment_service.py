@@ -12,6 +12,7 @@ from app.models.user import User
 from app.core.config import settings
 from app.services.voice_anonymizer import voice_anonymizer
 from app.services.gemini_service import gemini_service
+from app.core.logger import logger
 
 
 class CommentGeminiService:
@@ -124,6 +125,7 @@ class CommentService:
         post = result.scalars().first()
         
         if not post:
+            logger.warning("comment_creation_failed_post_not_found", post_id=str(post_id), user_id=str(user.id))
             raise ValueError("Post does not exist")
         
         # Create comment in PROCESSING status
@@ -137,6 +139,7 @@ class CommentService:
         self.db.add(comment)
         await self.db.commit()
         await self.db.refresh(comment)
+        logger.info("comment_created", comment_id=str(comment.id), post_id=str(post_id), user_id=str(user.id))
         
         return comment
     
@@ -183,18 +186,19 @@ class CommentService:
             
             await self.db.commit()
             await self.db.refresh(comment)
+            logger.info("comment_audio_processed", comment_id=str(comment.id), sentiment=comment.sentiment, anonymize_mode=anonymize_mode)
             
             # Delete original audio file
             try:
                 if os.path.exists(original_audio_path):
                     os.remove(original_audio_path)
             except Exception as e:
-                print(f"Warning: Could not delete original audio file {original_audio_path}: {e}")
+                logger.warning("original_audio_delete_failed", path=original_audio_path, error=str(e))
             
             return comment
             
         except Exception as e:
-            print(f"Error processing comment audio: {e}")
+            logger.error("comment_audio_processing_failed", comment_id=str(comment.id), error=str(e), exc_info=True)
             comment.status = CommentStatusEnum.FAILED
             await self.db.commit()
             
@@ -256,5 +260,6 @@ class CommentService:
         comment.status = CommentStatusEnum.FAILED
         await self.db.commit()
         await self.db.refresh(comment)
+        logger.error("comment_marked_failed", comment_id=str(comment.id), status="FAILED")
         return comment
         

@@ -1,11 +1,14 @@
-import asyncio
+# Configure logging FIRST - suppress uvicorn access logs
 import logging
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import create_tables
+from app.core.logger import register_logger
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.communities import router as communities_router
@@ -21,6 +24,11 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
+
+    # -------------------------------------
+    # Async Logger Middleware
+    # -------------------------------------
+    register_logger(app)
 
     # -------------------------------------
     # CORS

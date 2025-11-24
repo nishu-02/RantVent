@@ -9,6 +9,7 @@ from app.models.post import Post
 from app.models.comment import Comment
 from app.schemas.user import UserCreate, UserProfileUpdate, PasswordChangeRequest
 from app.core.token import hash_password, verify_password
+from app.core.logger import logger
 
 
 class UserService:
@@ -47,10 +48,12 @@ class UserService:
         """Create a new user"""
         # Check if username already exists
         if await self.username_exists(data.username):
+            logger.warning("user_registration_failed_username_exists", username=data.username)
             raise ValueError("Username already exists")
             
         # Check if email already exists
         if await self.user_exists(data.email):
+            logger.warning("user_registration_failed_email_exists", email=data.email)
             raise ValueError("Email already exists")
             
         user = User(
@@ -65,8 +68,10 @@ class UserService:
         try:
             await self.db.commit()
             await self.db.refresh(user)
+            logger.info("user_created", user_id=str(user.id), username=user.username, email=user.email)
         except IntegrityError:
             await self.db.rollback()
+            logger.error("user_creation_failed_integrity", email=data.email, username=data.username)
             raise ValueError("Email or username already exists")
 
         return user
@@ -97,6 +102,7 @@ class UserService:
     async def change_password(self, user: User, data: PasswordChangeRequest) -> bool:
         """Change user password with current password verification"""
         if not verify_password(data.current_password, user.password_hash):
+            logger.warning("password_change_failed_incorrect_current", user_id=str(user.id))
             raise ValueError("Current password is incorrect")
         
         user.password_hash = hash_password(data.new_password)
@@ -104,9 +110,11 @@ class UserService:
         try:
             await self.db.commit()
             await self.db.refresh(user)
+            logger.info("password_changed", user_id=str(user.id))
             return True
-        except Exception:
+        except Exception as e:
             await self.db.rollback()
+            logger.error("password_change_failed", user_id=str(user.id), error=str(e), exc_info=True)
             raise ValueError("Failed to update password")
 
     async def get_user_stats(self, user_id: str) -> dict:

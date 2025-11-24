@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from uuid import UUID
+import asyncio
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
 from fastapi.responses import FileResponse
@@ -16,6 +17,7 @@ from app.schemas.post import PostOut, PostFeedItem
 from app.services.post_service import PostService
 from app.utils.storage import save_upload_to_disk
 from app.workers.tasks import process_post_audio
+from app.core.logger import logger
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -38,10 +40,12 @@ async def create_post(
         
         community = await community_service.get_by_id(str(community_id))
         if not community:
+            logger.warning("post_creation_failed_community_not_found", community_id=str(community_id), user_id=str(current_user.id))
             raise HTTPException(404, "Community not found")
         
         is_member = await community_service.is_member(str(community_id), str(current_user.id))
         if not is_member:
+            logger.warning("post_creation_failed_not_member", community_id=str(community_id), user_id=str(current_user.id))
             raise HTTPException(403, "Must be a member of the community to post")
 
     raw_path = await save_upload_to_disk(file)
@@ -53,10 +57,10 @@ async def create_post(
         community_id=community_id,
     )
 
-    import asyncio
     asyncio.create_task(
         process_post_audio(post.id, anonymize_mode)
     )
+    logger.info("post_created_queued_for_processing", post_id=str(post.id), user_id=str(current_user.id), anonymize_mode=anonymize_mode)
     
     # Update community post count if post is in a community
     if community_id:

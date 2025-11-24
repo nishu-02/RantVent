@@ -51,11 +51,11 @@ class CommunityOut(BaseModel):
     id: str
     name: str
     display_name: str
-    description: Optional[str]
-    rules: Optional[str]
-    category: Optional[CategoryOut]
-    avatar_url: Optional[str]
-    banner_url: Optional[str]
+    description: Optional[str] = None
+    rules: Optional[str] = None
+    category: Optional[CategoryOut] = None
+    avatar_url: Optional[str] = None
+    banner_url: Optional[str] = None
     type: str
     is_active: bool
     member_count: int

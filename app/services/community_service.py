@@ -7,6 +7,7 @@ from app.models.community import Community, CommunityType
 from app.models.community_membership import CommunityMembership, MembershipRole
 from app.models.user import User
 from app.schemas.community import CommunityCreate, CommunityUpdate
+from app.core.logger import logger
 
 
 class CommunityService:
@@ -21,6 +22,7 @@ class CommunityService:
         # Check if community with same name exists
         existing = await self.get_by_name(data.name)
         if existing:
+            logger.warning("community_creation_failed_name_exists", name=data.name, creator_id=str(creator.id))
             raise ValueError("Community with this name already exists")
 
         community = Community(
@@ -46,9 +48,11 @@ class CommunityService:
             )
             self.db.add(membership)
             await self.db.commit()
+            logger.info("community_created", community_id=str(community.id), name=community.name, creator_id=str(creator.id))
 
         except IntegrityError:
             await self.db.rollback()
+            logger.error("community_creation_failed_integrity", name=data.name, creator_id=str(creator.id), exc_info=True)
             raise ValueError("Failed to create community")
         
         return community
@@ -113,6 +117,7 @@ class CommunityService:
         # Check if already a member
         existing_membership = await self._get_membership(community_id, str(user.id))
         if existing_membership and existing_membership.is_active:
+            logger.warning("user_already_member", community_id=community_id, user_id=str(user.id))
             raise ValueError("Already a member of this community")
 
         if existing_membership:
@@ -133,6 +138,7 @@ class CommunityService:
             community.member_count += 1
 
         await self.db.commit()
+        logger.info("user_joined_community", community_id=community_id, user_id=str(user.id))
         return True
 
     async def leave_community(

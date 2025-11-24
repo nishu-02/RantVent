@@ -11,6 +11,7 @@ from app.services.user_service import UserService
 from app.core.database import get_session
 from app.dependencies.auth import get_current_user
 from app.models.user import User
+from app.core.logger import logger
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -34,8 +35,10 @@ async def update_my_profile(
     
     try:
         updated_user = await service.update_user_profile(current_user, data)
+        logger.info("user_profile_updated", user_id=str(current_user.id))
         return UserOut.model_validate(updated_user)
     except ValueError as e:
+        logger.warning("profile_update_failed", user_id=str(current_user.id), error=str(e))
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
 
 

@@ -14,6 +14,7 @@ from app.schemas.comment import CommentOut, CommentCreate, CommentFeedItem
 from app.services.comment_service import CommentService
 from app.utils.storage import save_upload_to_disk
 from app.workers.tasks import process_comment_audio
+from app.core.logger import logger
 
 router = APIRouter(prefix="/comments", tags=["comments"])
 
@@ -47,6 +48,7 @@ async def create_comment(
         asyncio.create_task(
             process_comment_audio(comment.id, original_audio_path, anonymize_mode)
         )
+        logger.info("comment_created_queued_for_processing", comment_id=str(comment.id), post_id=str(post_id), user_id=str(current_user.id))
         
         # Convert to response format
         comment_out = CommentOut(
@@ -62,6 +64,7 @@ async def create_comment(
         return comment_out
         
     except ValueError as e:
+        logger.warning("comment_creation_failed", post_id=str(post_id), user_id=str(current_user.id), error=str(e))
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
 
 
