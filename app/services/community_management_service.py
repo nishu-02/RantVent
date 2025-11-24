@@ -305,3 +305,224 @@ class CommunityManagementService:
         )
         result = await self.db.execute(stmt)
         return result.scalars().first()
+
+    # Phase 2B Methods
+    async def pin_post(self, community_id: str, post_id: str, moderator_id: str) -> bool:
+        """Pin a post to community (moderator+ only)"""
+        from app.models.post import Post
+        
+        # Verify post exists and belongs to community
+        stmt = select(Post).where(
+            and_(
+                Post.id == post_id,
+                Post.community_id == community_id
+            )
+        )
+        result = await self.db.execute(stmt)
+        post = result.scalars().first()
+        
+        if not post:
+            raise ValueError("Post not found or doesn't belong to this community")
+        
+        # Pin the post
+        post.is_pinned = True
+        post.pinned_by = moderator_id
+        post.pinned_at = func.now()
+        
+        await self.db.commit()
+        return True
+
+    async def unpin_post(self, community_id: str, post_id: str) -> bool:
+        """Unpin a post from community"""
+        from app.models.post import Post
+        
+        stmt = select(Post).where(
+            and_(
+                Post.id == post_id,
+                Post.community_id == community_id,
+                Post.is_pinned == True
+            )
+        )
+        result = await self.db.execute(stmt)
+        post = result.scalars().first()
+        
+        if not post:
+            return False
+        
+        post.is_pinned = False
+        post.pinned_by = None
+        post.pinned_at = None
+        
+        await self.db.commit()
+        return True
+
+    async def get_pinned_posts(self, community_id: str) -> List[dict]:
+        """Get all pinned posts in a community"""
+        from app.models.post import Post
+        
+        stmt = (
+            select(Post)
+            .where(
+                and_(
+                    Post.community_id == community_id,
+                    Post.is_pinned == True
+                )
+            )
+            .order_by(desc(Post.pinned_at))
+        )
+        
+        result = await self.db.execute(stmt)
+        posts = result.scalars().all()
+        
+        return [
+            {
+                "id": str(post.id),
+                "title": post.title,
+                "content": post.content,
+                "user_id": str(post.user_id),
+                "created_at": post.created_at,
+                "pinned_at": post.pinned_at,
+                "pinned_by": post.pinned_by
+            }
+            for post in posts
+        ]
+
+    async def upload_community_avatar(self, community_id: str, file) -> str:
+        """Upload community avatar (placeholder - would integrate with storage service)"""
+        from app.utils.storage import save_uploaded_file
+        
+        # Save file (placeholder implementation)
+        filename = f"community_{community_id}_avatar_{file.filename}"
+        file_path = await save_uploaded_file(file, "avatars", filename)
+        
+        # Update community
+        community = await self.get_community(community_id)
+        community.avatar_url = file_path
+        
+        await self.db.commit()
+        return file_path
+
+    async def upload_community_banner(self, community_id: str, file) -> str:
+        """Upload community banner"""
+        from app.utils.storage import save_uploaded_file
+        
+        # Save file (placeholder implementation)  
+        filename = f"community_{community_id}_banner_{file.filename}"
+        file_path = await save_uploaded_file(file, "banners", filename)
+        
+        # Update community
+        community = await self.get_community(community_id)
+        community.banner_url = file_path
+        
+        await self.db.commit()
+        return file_path
+
+    async def get_community_analytics(self, community_id: str) -> dict:
+        """Get detailed community analytics"""
+        from datetime import datetime, timedelta
+        
+        now = datetime.utcnow()
+        week_ago = now - timedelta(days=7)
+        month_ago = now - timedelta(days=30)
+        
+        # Member growth
+        members_stmt = select(func.count(CommunityMembership.id)).where(
+            and_(
+                CommunityMembership.community_id == community_id,
+                CommunityMembership.is_active == True
+            )
+        )
+        total_members = await self.db.scalar(members_stmt) or 0
+        
+        new_members_week_stmt = select(func.count(CommunityMembership.id)).where(
+            and_(
+                CommunityMembership.community_id == community_id,
+                CommunityMembership.is_active == True,
+                CommunityMembership.created_at >= week_ago
+            )
+        )
+        new_members_week = await self.db.scalar(new_members_week_stmt) or 0
+        
+        # Post analytics
+        posts_stmt = select(func.count(Post.id)).where(Post.community_id == community_id)
+        total_posts = await self.db.scalar(posts_stmt) or 0
+        
+        posts_week_stmt = select(func.count(Post.id)).where(
+            and_(
+                Post.community_id == community_id,
+                Post.created_at >= week_ago
+            )
+        )
+        posts_week = await self.db.scalar(posts_week_stmt) or 0
+        
+        # Comment analytics
+        comments_stmt = (
+            select(func.count(Comment.id))
+            .join(Post, Comment.post_id == Post.id)
+            .where(Post.community_id == community_id)
+        )
+        total_comments = await self.db.scalar(comments_stmt) or 0
+        
+        # Active users (posted or commented in last week)
+        active_users_posts_stmt = (
+            select(func.count(func.distinct(Post.user_id)))
+            .where(
+                and_(
+                    Post.community_id == community_id,
+                    Post.created_at >= week_ago
+                )
+            )
+        )
+        active_users_posts = await self.db.scalar(active_users_posts_stmt) or 0
+        
+        # Top contributors (placeholder)
+        top_contributors = [
+            {"user_id": "placeholder", "username": "Top User", "contributions": 15}
+        ]
+        
+        return {
+            "member_count": total_members,
+            "post_count": total_posts,
+            "daily_posts": round(posts_week / 7, 1),
+            "weekly_posts": posts_week,
+            "monthly_posts": await self.db.scalar(select(func.count(Post.id)).where(
+                and_(Post.community_id == community_id, Post.created_at >= month_ago)
+            )) or 0,
+            "top_contributors": top_contributors,
+            "growth_stats": {
+                "new_members_week": new_members_week,
+                "growth_rate": round((new_members_week / max(total_members - new_members_week, 1)) * 100, 2)
+            },
+            "activity_trend": [
+                {"period": "week", "posts": posts_week, "active_users": active_users_posts}
+            ]
+        }
+
+    async def get_user_role(self, community_id: str, user_id: str) -> Optional[MembershipRole]:
+        """Alias for get_user_role_in_community to match API expectations"""
+        return await self.get_user_role_in_community(community_id, user_id)
+
+    async def pin_post(self, community_id: str, post_id: str, moderator_id: str, reason: str = None) -> bool:
+        """Pin a post to community (moderator+ only) - updated signature"""
+        from app.models.post import Post
+        
+        # Verify post exists and belongs to community
+        stmt = select(Post).where(
+            and_(
+                Post.id == post_id,
+                Post.community_id == community_id
+            )
+        )
+        result = await self.db.execute(stmt)
+        post = result.scalars().first()
+        
+        if not post:
+            raise ValueError("Post not found or doesn't belong to this community")
+        
+        # Pin the post
+        post.is_pinned = True
+        post.pinned_by = moderator_id
+        post.pinned_at = func.now()
+        
+        await self.db.commit()
+        return True

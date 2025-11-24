@@ -78,6 +78,22 @@ class Post(Base):
         nullable=True,
     )
 
+    # Pinned posts
+    is_pinned: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+    )
+
+    pinned_by: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    pinned_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     # relationships
     user: Mapped["User"] = relationship(
         back_populates="posts"

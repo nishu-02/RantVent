@@ -8,10 +8,10 @@ from uuid import UUID
 from app.core.database import Base
 
 class MembershipRole(PyEnum):
-    MEMBER = "member"
-    MODERATOR = "moderator"
-    ADMIN = "admin"
-    OWNER = "owner"
+    MEMBER = "MEMBER"
+    MODERATOR = "MODERATOR"
+    ADMIN = "ADMIN"
+    OWNER = "OWNER"
 
 
 class CommunityMembership(Base):
